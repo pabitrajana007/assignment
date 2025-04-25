@@ -1,0 +1,17 @@
+# React
+node_modules/
+build/
+dist/
+
+# Flask
+__pycache__/
+instance/
+*.pyc
+.env
+
+# General
+.DS_Store
+*.log
+*.sqlite3
+.vscode/
+.env.local
