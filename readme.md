@@ -17,7 +17,7 @@ This is a full-stack chatbot web application built with **ReactJS (frontend)** a
 
 ### Frontend:
 - ReactJS  
-- CSS
+
 
 ### Backend:
 - Python (Flask)  
