@@ -6,9 +6,9 @@ This is a full-stack chatbot web application built with **ReactJS (frontend)** a
 
 ## ✨ Features
 
-- 🔁 Chat with a GPT-based assistant
-- 💾 View complete conversation history
-- ⭐ Mark and view favorite responses
+- 🔁 Chat with a GPT-based assistant  
+- 💾 View complete conversation history  
+- ⭐ Mark and view favorite responses  
 - 🚀 Smooth UI with loading states and responsive design
 
 ---
@@ -16,13 +16,36 @@ This is a full-stack chatbot web application built with **ReactJS (frontend)** a
 ## 🛠 Tech Stack
 
 ### Frontend:
-- ReactJS
+- ReactJS  
 - CSS
 
 ### Backend:
-- Python (Flask)
-- OpenAI 
+- Python (Flask)  
+- OpenAI  
 - PostgreSQL
 
+---
+
+## env file Setup
+
+Create an env file and add following :
+
+OPENAI_API_KEY=
+
+DATABASE_USER=postgres
+DATABASE_PASSWORD=
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=chatbot
 
 
+
+## 🧱 Database Setup
+
+To set up the PostgreSQL database:
+
+1. Make sure PostgreSQL is installed and running.
+2. Create a database named `chatbot`:
+   ```bash
+   createdb chatbot
+3. Run create_table.py script in backend folder
