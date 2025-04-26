@@ -3,25 +3,25 @@ import './App.css';
 
 function App() {
   const [input, setInput] = useState('');
-  const [response, setResponse] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
   const [conversationHistory, setConversationHistory] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const BACKEND_URL = "http://localhost:5000";
 
-  // Fetch all conversation history
+  // Fetch conversation history
   const fetchHistory = async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/history`);
       const data = await res.json();
-      setConversationHistory(data.history.reverse()); // Show latest first
+      setConversationHistory(data.history.reverse());
     } catch (error) {
       console.error("Error fetching history:", error);
     }
   };
 
-  // Fetch all favorite conversations
+  // Fetch favorite conversations
   const fetchFavorites = async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/favorites`);
@@ -32,26 +32,30 @@ function App() {
     }
   };
 
-  // Load data on initial render
+  // Initial load
   useEffect(() => {
     fetchHistory();
     fetchFavorites();
   }, []);
 
-  // Auto-scroll to bottom when new response arrives
+  // Scroll chat to bottom when new message appears
   useEffect(() => {
-    const chatArea = document.querySelector('.chat-area');
+    const chatArea = document.querySelector('.chat-messages');
     if (chatArea) {
       chatArea.scrollTop = chatArea.scrollHeight;
     }
-  }, [response]);
+  }, [chatMessages, loading]);
 
-  // Send a message to the bot
+  // Handle sending a message
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
     setLoading(true);
+
+    // Add user's message immediately
+    setChatMessages((prev) => [...prev, { role: 'user', content: input }]);
+
     try {
       const res = await fetch(`${BACKEND_URL}/chat`, {
         method: "POST",
@@ -60,9 +64,13 @@ function App() {
       });
 
       const data = await res.json();
-      setResponse(data.response);
+
+      // Add bot's reply
+      setChatMessages((prev) => [...prev, { role: 'bot', content: data.response }]);
       setInput('');
-      fetchHistory();
+
+      await fetchHistory();
+      await fetchFavorites();
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
@@ -70,10 +78,8 @@ function App() {
     }
   };
 
-  // Toggle favorite status for a conversation
+  // Toggle favorite status
   const toggleFavorite = async (conv) => {
-    const updatedStatus = !conv.is_favorite;
-
     try {
       await fetch(`${BACKEND_URL}/bookmark`, {
         method: "POST",
@@ -81,12 +87,12 @@ function App() {
         body: JSON.stringify({
           user_message: conv.user_message,
           bot_response: conv.bot_response,
-          is_favorite: updatedStatus
+          is_favorite: !conv.is_favorite
         }),
       });
 
-      fetchHistory();
-      fetchFavorites();
+      await fetchHistory();
+      await fetchFavorites();
     } catch (error) {
       console.error("Error updating favorite:", error);
     }
@@ -95,9 +101,11 @@ function App() {
   return (
     <div className="App">
       <div className="container">
+
+        {/* Sidebar */}
         <div className="sidebar">
           <div className="favorites">
-            <h3>Favorites</h3>
+            <h3>⭐ Favorites</h3>
             {favorites.length > 0 ? (
               favorites.map((fav) => (
                 <div key={fav.id || `${fav.user_message}-${fav.bot_response}`} className="favorite-conversation">
@@ -111,7 +119,7 @@ function App() {
           </div>
 
           <div className="conversation-history">
-            <h3>History</h3>
+            <h3>🕑 History</h3>
             {conversationHistory.length > 0 ? (
               conversationHistory.map((conv) => (
                 <div key={conv.id || `${conv.user_message}-${conv.bot_response}`} className="conversation">
@@ -123,35 +131,45 @@ function App() {
                 </div>
               ))
             ) : (
-              <p>No conversation history yet!</p>
+              <p>No conversations yet!</p>
             )}
           </div>
         </div>
 
+        {/* Chat Area */}
         <div className="chat-area">
-          <h1>Chat with GPT</h1>
-          <form onSubmit={handleSubmit}>
+          <h1>Chat with GPT 🚀</h1>
+
+          <div className="chat-messages">
+            {chatMessages.map((msg, index) => (
+              <div key={index} className={`message ${msg.role}`}>
+                <strong>{msg.role === 'user' ? 'You' : 'Bot'}:</strong> {msg.content}
+              </div>
+            ))}
+            {loading && (
+              <div className="message bot">
+                <strong>Bot:</strong> 
+                <div className="typing">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="chat-form">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
+              disabled={loading}
             />
-            <button type="submit" disabled={loading}>
+            <button type="submit" disabled={loading || !input.trim()}>
               {loading ? "Sending..." : "Send"}
             </button>
           </form>
-
-          {loading && (
-            <div className="chat-response">Loading...</div>
-          )}
-
-          {!loading && response && (
-            <div className="chat-response">
-              <strong>Bot:</strong> {response}
-            </div>
-          )}
         </div>
+
       </div>
     </div>
   );

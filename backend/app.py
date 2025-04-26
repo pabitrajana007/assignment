@@ -33,8 +33,8 @@ db = SQLAlchemy(app)
 # Conversation model
 class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_message = db.Column(db.String(500), nullable=False)
-    bot_response = db.Column(db.String(500), nullable=False)
+    user_message = db.Column(db.Text, nullable=False)
+    bot_response = db.Column(db.Text, nullable=False)
     is_favorite = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
@@ -44,25 +44,37 @@ class Conversation(db.Model):
 with app.app_context():
     db.create_all()
 
-# Route: Chat and save
+# Route: Chat and save (continuous memory)
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json.get("message")
     is_favorite = request.json.get("is_favorite", False)
 
     if not user_message:
-        return jsonify({"response": "No input message received."})
+        return jsonify({"response": "No input message received."}), 400
 
     try:
+        # Fetch the conversation history from DB
+        history = Conversation.query.order_by(Conversation.id).all()
+
+        # Build message history for OpenAI API
+        messages = [{"role": "system", "content": "You are a helpful assistant."}]
+        for convo in history:
+            messages.append({"role": "user", "content": convo.user_message})
+            messages.append({"role": "assistant", "content": convo.bot_response})
+
+        # Add the new user message
+        messages.append({"role": "user", "content": user_message})
+
+        # Send to OpenAI
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_message}
-            ]
+            messages=messages
         )
+
         reply = response.choices[0].message.content.strip()
 
+        # Save new message + response to database
         conversation = Conversation(
             user_message=user_message,
             bot_response=reply,
@@ -77,7 +89,7 @@ def chat():
         })
 
     except Exception as e:
-        return jsonify({"response": f"Error: {str(e)}"})
+        return jsonify({"response": f"Error: {str(e)}"}), 500
 
 # Route: Get all favorites
 @app.route('/favorites', methods=['GET'])
@@ -95,13 +107,13 @@ def get_favorites():
         ]
         return jsonify({"favorites": favorite_conversations})
     except Exception as e:
-        return jsonify({"response": f"Error: {str(e)}"})
+        return jsonify({"response": f"Error: {str(e)}"}), 500
 
 # Route: Get full history
 @app.route('/history', methods=['GET'])
 def get_history():
     try:
-        history = Conversation.query.all()
+        history = Conversation.query.order_by(Conversation.id).all()
         all_conversations = [
             {
                 "id": conv.id,
@@ -113,7 +125,7 @@ def get_history():
         ]
         return jsonify({"history": all_conversations})
     except Exception as e:
-        return jsonify({"response": f"Error: {str(e)}"})
+        return jsonify({"response": f"Error: {str(e)}"}), 500
 
 # Route: Update favorite status
 @app.route('/bookmark', methods=['POST'])
